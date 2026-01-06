@@ -17,6 +17,7 @@ class ClientConnection {
       return;
     }
 
+    // --- FIX: Send Handshake Immediately ---
     sendHandshake(assignedId);
 
     int colorId = assignedId;
@@ -60,17 +61,15 @@ class ClientConnection {
     }
   }
 
-  // --- FIX: Add \n to delimiters ---
+  // --- FIX: Add Newline delimiter (\n) to prevent packet merging ---
   void sendHandshake(int id) {
     if (socket.readyState == WebSocket.open) {
-      // Append newline!
       socket.add(jsonEncode({'type': 'handshake', 'id': id}) + "\n");
     }
   }
 
   void sendSnapshot(GameStateModel snapshot) {
     if (socket.readyState == WebSocket.open) {
-      // Append newline!
       socket.add(jsonEncode(snapshot.toJson()) + "\n");
     }
   }

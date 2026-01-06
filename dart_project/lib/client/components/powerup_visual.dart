@@ -1,73 +1,43 @@
-import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
-//import '../../common/constants.dart';
+import 'package:flame/game.dart';
 import '../../common/protocol.dart';
 
-class PowerupVisual extends PositionComponent {
-  final int id;
-  final int type; // 0 = Range, 1 = Speed, 2 = Ammo
+class PowerupVisual extends SpriteAnimationComponent with HasGameRef {
+  final int type;
 
-  PowerupVisual(PowerupModel model)
-    : id = model.id,
-      type = model.type,
-      super(size: Vector2.all(32)) { // Fixed size to match tile (32x32)
-    position = Vector2(model.x * 32.0, model.y * 32.0);
-  }
+  PowerupVisual(PowerupModel model) 
+    : type = model.type,
+      super(
+        position: Vector2(model.x * 32.0, model.y * 32.0),
+        size: Vector2(32, 32)
+      );
 
   @override
   Future<void> onLoad() async {
-    // 1. Determine Color & Label based on Type
-    Color color;
-    String label;
-
+    final image = await gameRef.images.load('powerups.png'); // OR 'powerups.png' - CHECK THIS!
+    // Using frames from text file
+    
+    List<Vector2> frames = [];
+    
     switch (type) {
-      case 0: // Fire Up
-        color = Colors.orange;
-        label = 'F';
+      case 0: // Fire Up [(40, 20), (40, 60)]
+        frames = [Vector2(40, 20), Vector2(40, 60)];
         break;
-      case 1: // Speed Up
-        color = Colors.blue;
-        label = 'S';
+      case 1: // Speed Up [(0, 0), (0, 40)]
+        frames = [Vector2(0, 0), Vector2(0, 40)];
         break;
-      case 2: // Bomb Up (Ammo)
-        color = const Color(0xFF9C27B0); // Purple
-        label = 'B';
+      case 2: // Bomb Up [(40, 0), (40, 40)]
+        frames = [Vector2(40, 0), Vector2(40, 40)];
         break;
-      default:
-        color = Colors.grey;
-        label = '?';
+      default: // Vest [(60, 0), (60, 40)]
+        frames = [Vector2(60, 0), Vector2(60, 40)];
+        break;
     }
 
-    // 2. Draw the Box (Background)
-    add(RectangleComponent(
-      size: Vector2(24, 24), // Slightly smaller than 32 to look like an item
-      position: Vector2(4, 4), // Centered (32-24)/2 = 4
-      paint: Paint()..color = color,
-    ));
+    final spriteList = frames.map((pos) {
+      return Sprite(image, srcPosition: pos, srcSize: Vector2(16, 16));
+    }).toList();
 
-    // 3. Draw the Border (White Outline)
-    add(RectangleComponent(
-      size: Vector2(24, 24),
-      position: Vector2(4, 4),
-      paint: Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    ));
-
-    // 4. Draw the Letter
-    add(TextComponent(
-      text: label,
-      textRenderer: TextPaint(
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w900, // Extra Bold
-          fontFamily: 'Courier', // Retro feel
-        ),
-      ),
-      // Approximate centering for the text
-      position: Vector2(type == 0 ? 10 : 9, 4), 
-    ));
+    animation = SpriteAnimation.spriteList(spriteList, stepTime: 0.2, loop: true);
   }
 }

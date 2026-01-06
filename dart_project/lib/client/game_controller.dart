@@ -28,7 +28,6 @@ class GameController {
         (data) {
           // --- FIX: Handle Merged Packets ---
           final String packet = data.toString().trim();
-          // Split by newline in case two JSONs are stuck together
           final List<String> messages = packet.split('\n');
 
           for (String msg in messages) {
@@ -36,6 +35,7 @@ class GameController {
             try {
               final jsonMap = jsonDecode(msg);
               
+              // Handshake
               if (jsonMap is Map && jsonMap['type'] == 'handshake') {
                 _myPlayerId = jsonMap['id'];
                 print("[Client] Handshake received. I am Player $_myPlayerId");
@@ -46,6 +46,7 @@ class GameController {
                 continue; 
               }
 
+              // Game State
               currentSnapshot = GameStateModel.fromJson(jsonMap);
               onStateUpdated?.call(currentSnapshot!);
               

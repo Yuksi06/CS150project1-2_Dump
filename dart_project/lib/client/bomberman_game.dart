@@ -1,8 +1,9 @@
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
-import 'package:flame/components.dart'; // Added for CameraComponent
+import 'package:flame/components.dart'; 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 import 'game_controller.dart';
 import '../common/constants.dart'; 
@@ -13,12 +14,12 @@ import 'components/crate_layer.dart';
 import 'components/bomb_visual.dart';
 import 'components/explosion_visual.dart';
 import 'components/powerup_visual.dart';
+import 'components/crate_destruction_visual.dart';
 
 class BombermanGame extends FlameGame with KeyboardEvents {
   final GameController controller;
-  final int myPlayerId; // Added myPlayerId
+  final int myPlayerId; 
 
-  // Keep track of visual objects
   final Map<int, RemotePlayer> _players = {};
   late CrateLayer _crateLayer;
   final Map<int, BombVisual> _bombs = {};
@@ -37,11 +38,29 @@ class BombermanGame extends FlameGame with KeyboardEvents {
 
   @override
   Future<void> onLoad() async {
-    // Add Game Map
-    add(GameMap());
+    int retries = 0;
+    while (retries < 5) {
+      try {
+        await images.loadAll([
+          'bombermanAndNPCs.png', 
+          'ghost.png',
+          'tileSet-2.png',
+        ]);
+        print("Assets loaded successfully.");
+        break; 
+      } catch (e) {
+        retries++;
+        print("Asset load failed (Attempt $retries/5): $e");
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
+    }
 
-    // Add Crate Layer on top of the Map, but below Players
-    _crateLayer = CrateLayer();
+    add(GameMap()..priority = 0);
+
+    _crateLayer = CrateLayer()..priority = 1;
+    _crateLayer.onCrateDestroyed = (pos) {
+      add(CrateDestructionVisual(position: pos)..priority = 3);
+    };
     add(_crateLayer);
   }
 
@@ -52,33 +71,49 @@ class BombermanGame extends FlameGame with KeyboardEvents {
     final snapshot = controller.currentSnapshot;
     if (snapshot == null) return;
 
-    // Sync players
-    // 1. Update or Create Players that exist in the snapshot
+    bool amIDead = false;
+    try {
+      final me = snapshot.players.firstWhere((p) => p.id == myPlayerId);
+      amIDead = me.isDead;
+    } catch (_) {}
+
     for (var playerModel in snapshot.players) {
       
-      // GHOST VISIBILITY LOGIC:
-      // If player is dead AND not me, skip visuals (Invisible Ghost)
+      // --- FIX: VISIBILITY LOGIC ---
       if (playerModel.isDead && playerModel.id != myPlayerId) {
-        if (_players.containsKey(playerModel.id)) {
-          remove(_players[playerModel.id]!);
-          _players.remove(playerModel.id);
+        if (!amIDead) {
+          // I am alive. I should only hide them if they are fully a Ghost.
+          // If they are still playing the death animation, keep them visible.
+          if (_players.containsKey(playerModel.id)) {
+             final rp = _players[playerModel.id]!;
+             
+             // Must update model so it knows it is dead and plays anim
+             rp.syncToModel(playerModel);
+
+             if (rp.isVisiblyGhost) {
+               remove(rp);
+               _players.remove(playerModel.id);
+             }
+          }
+          // Do not create NEW players if they are already dead ghosts
+          else {
+             // (Optional: You could allow them to spawn just to play death anim if they just died, 
+             // but 'containsKey' covers the normal case of being on screen then dying)
+          }
+          continue; 
         }
-        continue; 
       }
 
       if (_players.containsKey(playerModel.id)) {
-        // Update existing
         _players[playerModel.id]!.syncToModel(playerModel);
       } else {
-        // Create new
         final newPlayer = RemotePlayer(playerModel);
+        newPlayer.priority = 10; 
         _players[playerModel.id] = newPlayer;
         add(newPlayer);
-        print("Added visual for Player ${playerModel.id}");
       }
     }
 
-    // 2. Remove players that are no longer in the snapshot
     _players.keys
       .where((id) => !snapshot.players.any((p) => p.id == id))
       .toList()
@@ -87,20 +122,17 @@ class BombermanGame extends FlameGame with KeyboardEvents {
         _players.remove(id);
       });
 
-    // Sync Crates
     _crateLayer.updateCrates(snapshot.softBlocks);
 
-    // Sync Bombs
-    // 1. Add new bombs
     for(var bombData in snapshot.bombs) {
       if (!_bombs.containsKey(bombData.id)) {
         final newBomb = BombVisual(bombData);
+        newBomb.priority = 5; 
         _bombs[bombData.id] = newBomb;
         add(newBomb);
       }
     }
 
-    // 2. Remove exploded bombs
     _bombs.keys
       .where((id) => !snapshot.bombs.any((b) => b.id == id))
       .toList()
@@ -109,30 +141,22 @@ class BombermanGame extends FlameGame with KeyboardEvents {
         _bombs.remove(id);
       });
 
-    // Sync Explosions
     for (var explosionData in snapshot.explosions) {
       if (!_processedExplosions.contains(explosionData.id)) {
-        // 1. Mark as seen
         _processedExplosions.add(explosionData.id);
-
-        // 2. Add Visual
-        add(ExplosionVisual(explosionData));
-
-        print("Boom! Visual added for ${explosionData.id}");
+        add(ExplosionVisual(explosionData)..priority = 8);
       }
     }
 
-    // Sync Powerups
-    // 1. Add new powerups
     for (var pData in snapshot.powerups) {
       if (!_powerups.containsKey(pData.id)) {
         final pVisual = PowerupVisual(pData);
+        pVisual.priority = 2;
         _powerups[pData.id] = pVisual;
         add(pVisual);
       }
     }
 
-    // 2. Remove picked up powerups
     _powerups.keys
       .where((id) => !snapshot.powerups.any((p) => p.id == id))
       .toList()
@@ -144,19 +168,15 @@ class BombermanGame extends FlameGame with KeyboardEvents {
 
   @override
   KeyEventResult onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    if (event is KeyRepeatEvent) {
-      return KeyEventResult.handled;
-    }
+    if (event is KeyRepeatEvent) return KeyEventResult.handled;
     
     final isDown = event is KeyDownEvent;
     final action = isDown ? 'move_start' : 'move_end';
 
-    // Bomb
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.space) {
       controller.sendAction('bomb', '');
     }
 
-    // Movement
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       controller.sendAction(action, 'up');
     } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {

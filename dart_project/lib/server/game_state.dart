@@ -153,6 +153,15 @@ class ServerGameState implements Updatable {
           break;
         }
         fireTiles.add([tx, ty]);
+
+        // Remove Powerups when hit by explosion
+        for (var entity in _entities) {
+          if (entity is PowerupEntity) {
+            if (entity.x.toInt() == tx && entity.y.toInt() == ty) {
+              entity.shouldRemove = true;
+            }
+          }
+        }
       }
     }
 
@@ -190,6 +199,16 @@ class ServerGameState implements Updatable {
     if (timeRemaining > 0) {
       timeRemaining -= dt;
       if (timeRemaining < 0) timeRemaining = 0;
+    }
+
+    // End Game when timer hits 0
+    if (timeRemaining <= 0 && currentWinnerId == null) {
+      var alivePlayers = _entities.whereType<PlayerEntity>().where((p) => !p.isDead).toList();
+      if (alivePlayers.length == 1) {
+        currentWinnerId = alivePlayers.first.id;
+      } else {
+        currentWinnerId = -1; // tie
+      }
     }
 
     for (var entity in _entities) {
@@ -276,7 +295,6 @@ class ServerGameState implements Updatable {
         .map((b) => b.toModel()) 
         .toList();
     
-    // FIX: Convert flat indices back to [x, y] pairs
     List<List<int>> blocks = _softBlocks.map((encoded) {
       int y = encoded ~/ gameWidth;
       int x = encoded % gameWidth;
@@ -295,7 +313,7 @@ class ServerGameState implements Updatable {
     
     return GameStateModel(
       players: players,
-      softBlocks: blocks, // Now strictly List<List<int>>
+      softBlocks: blocks,
       bombs: bombs, 
       explosions: explosions,
       powerups: powerups,
@@ -318,25 +336,36 @@ class PlayerEntity extends GameEntity {
   int explosionRange = 1;
 
   final List<String> _inputStack = [];
-  final double size = 0.7; 
+  final double size = 0.5; 
 
   PlayerEntity(int id, double x, double y, this.colorId, this.state) : super(id, x, y);
 
   @override
   void update(double dt) {
+    
+    if (state.currentWinnerId != null) {
+      _inputStack.clear();
+      return;
+    }
+
     if (isDead) {
        if (_inputStack.isEmpty) return;
        final direction = _inputStack.last;
        double nextX = x;
        double nextY = y;
+       
+       double ghostSpeed = 150.0; 
+
        switch(direction) {
-         case 'up':    nextY -= speed * dt; break;
-         case 'down':  nextY += speed * dt; break;
-         case 'left':  nextX -= speed * dt; break;
-         case 'right': nextX += speed * dt; break;
+         case 'up':    nextY -= ghostSpeed * dt; break;
+         case 'down':  nextY += ghostSpeed * dt; break;
+         case 'left':  nextX -= ghostSpeed * dt; break;
+         case 'right': nextX += ghostSpeed * dt; break;
        }
-       if (nextX >= 32.0 && nextX <= (gameWidth - 2) * 32.0) x = nextX;
-       if (nextY >= 32.0 && nextY <= (gameHeight - 2) * 32.0) y = nextY;
+       
+       // Ghost clipping (Walls 0..W-1)
+       if (nextX >= 0.0 && nextX <= (gameWidth - 1) * 32.0) x = nextX;
+       if (nextY >= 0.0 && nextY <= (gameHeight - 1) * 32.0) y = nextY;
        return;
     }
 
@@ -435,6 +464,10 @@ class PlayerEntity extends GameEntity {
            state.startCountdown(); 
         }
       }
+    }
+
+    if (state.currentWinnerId != null) {
+      return;
     }
 
     if (isDead) {
