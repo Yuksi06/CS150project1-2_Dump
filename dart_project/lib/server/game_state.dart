@@ -266,80 +266,174 @@ class ServerGameState implements Updatable {
 }
 
 class PlayerEntity extends GameEntity {
-  final int colorId; final ServerGameState state; bool isDead = false; bool isReady = false; bool isInvincible = false;
-  double speed = 120.0; double invincibleTimer = 0.0; int maxBombs = 1; int activeBombs = 0; int explosionRange = 1;
-  final List<String> _inputStack = []; final double size = 0.5; 
+  final int colorId; 
+  final ServerGameState state; 
+  bool isDead = false; 
+  bool isReady = false; 
+  bool isInvincible = false;
+  double speed = 120.0; 
+  double invincibleTimer = 0.0; 
+  int maxBombs = 1; 
+  int activeBombs = 0; 
+  int explosionRange = 1;
+  final List<String> _inputStack = [];
+  final double size = 0.5; 
+
   PlayerEntity(int id, double x, double y, this.colorId, this.state) : super(id, x, y);
 
   @override void update(double dt) {
-    if (state.currentWinnerId != null) { _inputStack.clear(); return; }
-    if (isInvincible){ invincibleTimer -= dt; if (invincibleTimer <= 0){ isInvincible = false; invincibleTimer = 0.0; } }
+    if (state.currentWinnerId != null) { 
+      _inputStack.clear(); return; 
+    }
+    if (isInvincible){ 
+      invincibleTimer -= dt; 
+      if (invincibleTimer <= 0){ 
+        isInvincible = false; invincibleTimer = 0.0; 
+      } 
+    }
+
     if (isDead) {
        if (_inputStack.isEmpty) return;
        final direction = _inputStack.last;
        double nextX = x; double nextY = y;
        double ghostSpeed = 150.0; 
-       switch(direction) { case 'up': nextY -= ghostSpeed * dt; break; case 'down': nextY += ghostSpeed * dt; break; case 'left': nextX -= ghostSpeed * dt; break; case 'right': nextX += ghostSpeed * dt; break; }
+       switch(direction) { 
+        case 'up': nextY -= ghostSpeed * dt; break; 
+        case 'down': nextY += ghostSpeed * dt; break; 
+        case 'left': nextX -= ghostSpeed * dt; break; 
+        case 'right': nextX += ghostSpeed * dt; break; 
+      }
+
        if (nextX >= 0.0 && nextX <= (gameWidth - 1) * 32.0) x = nextX;
        if (nextY >= 0.0 && nextY <= (gameHeight - 1) * 32.0) y = nextY;
+
        return;
     }
+
     if (_inputStack.isEmpty) return;
+
     final direction = _inputStack.last;
     double nextX = x; double nextY = y;
-    switch(direction) { case 'up': nextY -= speed * dt; break; case 'down': nextY += speed * dt; break; case 'left': nextX -= speed * dt; break; case 'right': nextX += speed * dt; break; }
+
+    switch(direction) { 
+      case 'up': nextY -= speed * dt; break; 
+      case 'down': nextY += speed * dt; break; 
+      case 'left': nextX -= speed * dt; break; 
+      case 'right': nextX += speed * dt; break; 
+    }
+
     if (!_checkCollision(nextX, y)) x = nextX;
     if (!_checkCollision(x, nextY)) y = nextY;
   }
+
   bool _checkCollision(double newX, double newY) {
     final double margin = (32.0 * (1.0 - size)) / 2.0; 
-    double left = newX + margin; double right = newX + 32.0 - margin; double top = newY + margin; double bottom = newY + 32.0 - margin;
+    double left = newX + margin; 
+    double right = newX + 32.0 - margin; 
+    double top = newY + margin; 
+    double bottom = newY + 32.0 - margin;
+
     bool hitTerrain(double px, double py) => state.isTileSolid((px / 32).floor(), (py / 32).floor());
+    
     if (hitTerrain(left, top) || hitTerrain(right, top) || hitTerrain(left, bottom) || hitTerrain(right, bottom)) return true;
+
     bool hitsBlockingBomb(double px, double py) {
       int tx = (px / 32).floor(); int ty = (py / 32).floor();
+
       if (state.getBombAt(tx, ty) == null) return false;
+
       if (_doesRectOverlapTile(x, y, tx, ty)) return false; 
+
       return true; 
     }
+
     if (hitsBlockingBomb(left, top) || hitsBlockingBomb(right, top) || hitsBlockingBomb(left, bottom) || hitsBlockingBomb(right, bottom)) return true;
     return false;
   }
+  
   bool _doesRectOverlapTile(double playerX, double playerY, int tileX, int tileY) {
     final double margin = (32.0 * (1.0 - size)) / 2.0;
     double pLeft = playerX + margin; double pRight = playerX + 32.0 - margin;
     double pTop = playerY + margin; double pBottom = playerY + 32.0 - margin;
-    double tLeft = tileX * 32.0; double tRight = (tileX + 1) * 32.0; double tTop = tileY * 32.0; double tBottom = (tileY + 1) * 32.0;
+    double tLeft = tileX * 32.0; double tRight = (tileX + 1) * 32.0; 
+    double tTop = tileY * 32.0; double tBottom = (tileY + 1) * 32.0;
+
     return pLeft < tRight && pRight > tLeft && pTop < tBottom && pBottom > tTop;
   }
-  void restoreAmmo() { activeBombs--; if (activeBombs < 0) activeBombs = 0; }
+  
+  void restoreAmmo() { 
+    activeBombs--; 
+    if (activeBombs < 0) activeBombs = 0; 
+  }
+
   void handleCommand(String action, String direction) {
-    if (action == 'ready') { isReady = direction == 'true'; return; }
+    if (action == 'ready') { 
+      isReady = direction == 'true'; 
+      return; 
+    }
+
     if (state.currentWinnerId != null) return;
-    if (isDead) { if (action == 'move_start') { if (!_inputStack.contains(direction)) _inputStack.add(direction); } else if (action == 'move_end') { _inputStack.remove(direction); } return; }
-    if (action == 'move_start') { if (!_inputStack.contains(direction)) _inputStack.add(direction); } else if (action == 'move_end') { _inputStack.remove(direction); } else if (action == 'bomb') {
-      if (activeBombs >= maxBombs) return;
-      int gx = (x / 32 + 0.5).floor(); int gy = (y / 32 + 0.5).floor();
-      if (state.getBombAt(gx, gy) != null) return;  
-      activeBombs++;
-      int bombId = DateTime.now().microsecondsSinceEpoch;
-      state.addEntity(BombEntity(bombId, gx, gy, id, state, explosionRange, this));
+
+    if (isDead) { 
+      if (action == 'move_start') { 
+        if (!_inputStack.contains(direction)) _inputStack.add(direction); 
+      } else if (action == 'move_end') { 
+        _inputStack.remove(direction); 
+      } 
+        return; 
+    }
+
+    if (action == 'move_start') { 
+      if (!_inputStack.contains(direction)) _inputStack.add(direction); 
+    } else if (action == 'move_end') { 
+        _inputStack.remove(direction); 
+    } else if (action == 'bomb') {
+        if (activeBombs >= maxBombs) return;
+        int gx = (x / 32 + 0.5).floor(); int gy = (y / 32 + 0.5).floor();
+        if (state.getBombAt(gx, gy) != null) return;  
+        activeBombs++;
+        int bombId = DateTime.now().microsecondsSinceEpoch;
+        state.addEntity(BombEntity(bombId, gx, gy, id, state, explosionRange, this));
     }
   }
-  @override PlayerModel toModel() => PlayerModel(id: id, x: x, y: y, colorId: colorId, isDead: isDead, isReady: isReady, isInvincible: isInvincible);
+
+  @override 
+  PlayerModel toModel() => PlayerModel(id: id, x: x, y: y, colorId: colorId, isDead: isDead, isReady: isReady, isInvincible: isInvincible);
 }
 
 class BombEntity extends GameEntity {
-  double timer = 3.0; final int range; final int ownerId; final ServerGameState state; final PlayerEntity? owner;
-  BombEntity(int id, int gridX, int gridY, this.ownerId, this.state, this.range, this.owner) : super(id, gridX.toDouble(), gridY.toDouble());
-  @override void update(double dt) { timer -= dt; if (timer <= 0) { shouldRemove = true; state.explode(gridX, gridY, range); owner?.restoreAmmo(); } }
+  double timer = 3.0; 
+  final int range; 
+  final int ownerId; 
+  final ServerGameState state; 
+  final PlayerEntity? owner;
+
+  BombEntity(int id, int gridX, int gridY, this.ownerId, this.state, this.range, this.owner) 
+    : super(id, gridX.toDouble(), gridY.toDouble());
+  
+  @override 
+  void update(double dt) { 
+    timer -= dt; 
+    if (timer <= 0) { 
+      shouldRemove = true; 
+      state.explode(gridX, gridY, range); owner?.restoreAmmo(); 
+      } 
+  }
+
   int get gridX => x.toInt(); int get gridY => y.toInt();
-  @override BombModel toModel() => BombModel(id: id, x: gridX, y: gridY); 
+
+  @override 
+  BombModel toModel() => BombModel(id: id, x: gridX, y: gridY); 
 }
+
 class ExplosionEntity extends GameEntity {
   double timer = 1.0; final List<List<int>> tiles; final ServerGameState state;
-  ExplosionEntity(int id, this.tiles, this.state) : super(id, 0, 0);
-  @override void update(double dt) {
+
+  ExplosionEntity(int id, this.tiles, this.state) 
+    : super(id, 0, 0);
+
+  @override 
+  void update(double dt) {
     timer -= dt; if (timer <= 0) shouldRemove = true;
     for (var player in state.getPlayers()) {
       if (player.isDead || player.isInvincible) continue; 
@@ -347,12 +441,19 @@ class ExplosionEntity extends GameEntity {
       for (var tile in tiles) { if (tile[0] == px && tile[1] == py) player.isDead = true; }
     }
   }
-  @override ExplosionModel toModel() => ExplosionModel(id: id, affectedTiles: tiles);
+
+  @override 
+  ExplosionModel toModel() => ExplosionModel(id: id, affectedTiles: tiles);
 }
+
 class PowerupEntity extends GameEntity {
-  final int type; final ServerGameState state;
+  final int type; 
+  final ServerGameState state;
+
   PowerupEntity(int id, int x, int y, this.type, this.state) : super(id, x.toDouble(), y.toDouble());
-  @override void update(double dt) {
+
+  @override 
+  void update(double dt) {
     for (var player in state.getPlayers()) {
       if (player.isDead) continue; 
       int px = (player.x / 32 + 0.5).floor(); int py = (player.y / 32 + 0.5).floor();
@@ -362,5 +463,7 @@ class PowerupEntity extends GameEntity {
       }
     }
   }
-  @override PowerupModel toModel() => PowerupModel(id: id, x: x.toInt(), y: y.toInt(), type: type);
+
+  @override 
+  PowerupModel toModel() => PowerupModel(id: id, x: x.toInt(), y: y.toInt(), type: type);
 }

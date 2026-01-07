@@ -2,7 +2,7 @@ class PlayerModel {
   final int id;
   final double x;
   final double y;
-  final int colorId;  // 0 = White, 1 = Black, 2 = Red, 3 = Green
+  final int colorId;  // 0 = White, 1 = Black, 2 = Red, 3 = Blue, 4 = Green
   final bool isDead;
   final bool isReady;
   final bool isInvincible;
