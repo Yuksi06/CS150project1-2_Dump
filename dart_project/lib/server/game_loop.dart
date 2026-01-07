@@ -11,24 +11,25 @@ class GameLoop {
 
   late DateTime _lastTick;
 
-  GameLoop(this._target, {int fps = 60}) : _fps = fps;
+  // Generic GameLoop that ticks any 'Updatable' target (like ServerGameState)
+  GameLoop(this._target, {int fps = 30}) : _fps = fps;
 
   void start() {
-    if (_timer != null) return; // Already running
+    if (_timer != null) return; 
 
     _lastTick = DateTime.now();
     final duration = Duration(milliseconds: (1000 / _fps).round());
 
-    print("Server Loop start at $_fps FPS");
+    print("Server Logic Loop start at $_fps FPS");
 
     _timer = Timer.periodic(duration, (timer) {
       final now = DateTime.now();
 
-      // Calculate delta time in seconds [Microseconds / 1,000,000 = Seconds]
+      // Calculate delta time in seconds
       final dt = now.difference(_lastTick).inMicroseconds / 1000000.0;
       _lastTick = now;
 
-      // Execute the update on the target
+      // Execute the update
       _target.update(dt);
     });
   }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'host_menu.dart';
 import 'join_menu.dart';
+import 'audio_manager.dart';
 
 class MainMenu extends StatefulWidget {
   const MainMenu({super.key});
@@ -12,6 +13,13 @@ class MainMenu extends StatefulWidget {
 }
 
 class _MainMenuState extends State<MainMenu> {
+
+  @override
+  void initState() {
+    super.initState();
+    AudioManager().playBgm('opening');
+  }
+
   int _selectedIndex = 0;
   final FocusNode _focusNode = FocusNode();
 

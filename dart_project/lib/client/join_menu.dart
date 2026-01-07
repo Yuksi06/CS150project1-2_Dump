@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'game_controller.dart';
 import 'lobby_screen.dart';
+import 'audio_manager.dart';
 
 class JoinMenu extends StatefulWidget {
   const JoinMenu({super.key});
@@ -12,6 +13,13 @@ class JoinMenu extends StatefulWidget {
 }
 
 class _JoinMenuState extends State<JoinMenu> {
+
+  @override
+  void initState() {
+    super.initState();
+    AudioManager().playBgm('opening');
+  }
+
   int _selectedIndex = 0;
   bool _isEditing = false;
   
@@ -23,8 +31,7 @@ class _JoinMenuState extends State<JoinMenu> {
   final TextEditingController _ipController = TextEditingController(text: "127.0.0.1");
   final TextEditingController _portController = TextEditingController(text: "25000");
 
-  // Focus Nodes
-  final FocusNode _mainNode = FocusNode(); // FIX: Main node for navigation
+  final FocusNode _mainNode = FocusNode();
   final FocusNode _ipNode = FocusNode();
   final FocusNode _portNode = FocusNode();
 
@@ -79,7 +86,6 @@ class _JoinMenuState extends State<JoinMenu> {
 
   void _finishEditing(String value) {
     setState(() => _isEditing = false);
-    // FIX: Force focus back to main navigation node
     _mainNode.requestFocus();
   }
 
@@ -104,7 +110,7 @@ class _JoinMenuState extends State<JoinMenu> {
             builder: (context) => LobbyScreen(
               controller: controller, 
               myPlayerId: -1, 
-              isHost: false
+              isHost: false,
             ),
           ),
         );
@@ -119,7 +125,7 @@ class _JoinMenuState extends State<JoinMenu> {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      focusNode: _mainNode, // FIX: Attach main node here
+      focusNode: _mainNode,
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
@@ -189,7 +195,6 @@ class _JoinMenuState extends State<JoinMenu> {
               textAlign: TextAlign.right,
               readOnly: !_isEditing,
               onSubmitted: _finishEditing,
-              // FIX: Add cursor for visual feedback
               showCursor: _isEditing,
               cursorColor: Colors.green,
               decoration: const InputDecoration(

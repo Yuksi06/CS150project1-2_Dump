@@ -1,23 +1,24 @@
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
 import 'dart:math'; 
 import '../../common/protocol.dart';
 
-class ExplosionVisual extends Component with HasGameRef { // Changed to Component (Logic only)
+class ExplosionVisual extends Component { 
   final ExplosionModel model;
-  
+  double _lifeTime = 0.0;
+
   ExplosionVisual(this.model);
 
   @override
   Future<void> onLoad() async {
-    final image = await gameRef.images.load('tileSet-2.png');
+    // We use findGame to get the image reference
+    final image = await findGame()!.images.load('tileSet-2.png');
     
     SpriteAnimation createAnim(double xStart, double yStart, int count) {
       final sprites = <Sprite>[];
       for (int i = 0; i < count; i++) {
         sprites.add(Sprite(image, srcPosition: Vector2(xStart + (i * 16), yStart), srcSize: Vector2(16, 16)));
       }
-      return SpriteAnimation.spriteList(sprites, stepTime: 0.1, loop: false);
+      return SpriteAnimation.spriteList(sprites, stepTime: 0.1, loop: true); 
     }
 
     final centerAnim = createAnim(48, 816, 5);
@@ -41,41 +42,37 @@ class ExplosionVisual extends Component with HasGameRef { // Changed to Componen
       final Vector2 pos = Vector2(tile[0] * 32.0, tile[1] * 32.0);
       
       SpriteAnimationComponent animComp;
-
+      
       if (i == 0) {
-        // Center
-        animComp = SpriteAnimationComponent(
-          animation: centerAnim, position: pos, size: Vector2(32,32), priority: 9
-        );
+        animComp = SpriteAnimationComponent(animation: centerAnim, position: pos, size: Vector2(32,32), priority: 9);
       } else {
         int cx = model.affectedTiles[0][0];
         int tx = tile[0];
         int ty = tile[1];
 
         if (tx == cx) {
-           if (ty == minY) { // North Edge
-             animComp = SpriteAnimationComponent(animation: northAnim, position: pos, size: Vector2(32,32), priority: 7);
-           } else if (ty == maxY) { // South Edge
-             animComp = SpriteAnimationComponent(animation: southAnim, position: pos, size: Vector2(32,32), priority: 7);
-           } else { // Vert Middle
-             animComp = SpriteAnimationComponent(animation: vertAnim, position: pos, size: Vector2(32,32), priority: 8);
-           }
+           if (ty == minY) animComp = SpriteAnimationComponent(animation: northAnim, position: pos, size: Vector2(32,32), priority: 7);
+           else if (ty == maxY) animComp = SpriteAnimationComponent(animation: southAnim, position: pos, size: Vector2(32,32), priority: 7);
+           else animComp = SpriteAnimationComponent(animation: vertAnim, position: pos, size: Vector2(32,32), priority: 8);
         } else {
-           if (tx == minX) { // West Edge
-             animComp = SpriteAnimationComponent(animation: westAnim, position: pos, size: Vector2(32,32), priority: 7);
-           } else if (tx == maxX) { // East Edge
-             animComp = SpriteAnimationComponent(animation: eastAnim, position: pos, size: Vector2(32,32), priority: 7);
-           } else { // Horz Middle
-             animComp = SpriteAnimationComponent(animation: horzAnim, position: pos, size: Vector2(32,32), priority: 8);
-           }
+           if (tx == minX) animComp = SpriteAnimationComponent(animation: westAnim, position: pos, size: Vector2(32,32), priority: 7);
+           else if (tx == maxX) animComp = SpriteAnimationComponent(animation: eastAnim, position: pos, size: Vector2(32,32), priority: 7);
+           else animComp = SpriteAnimationComponent(animation: horzAnim, position: pos, size: Vector2(32,32), priority: 8);
         }
       }
       
-      animComp.removeOnFinish = true; 
-      gameRef.add(animComp);
+      // Add child to THIS component so they are removed together
+      add(animComp);
     }
-    
-    // This controller component is no longer needed
-    removeFromParent();
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _lifeTime += dt;
+    // Remove after 1 second (Server Hitbox Duration)
+    if (_lifeTime >= 1.0) {
+      removeFromParent();
+    }
   }
 }

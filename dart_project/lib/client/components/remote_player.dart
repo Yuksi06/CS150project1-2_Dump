@@ -113,6 +113,12 @@ class RemotePlayer extends PositionComponent with HasGameRef {
   void syncToModel(PlayerModel model) {
     _targetPosition = Vector2(model.x, model.y);
 
+    if (model.isInvincible) {
+      _spriteComponent!.opacity = 0.5;
+    } else {
+      _spriteComponent!.opacity = 1.0;
+    }
+
     if (_spriteComponent == null) return;
 
     if (_firstSync) {
@@ -233,9 +239,9 @@ class RemotePlayer extends PositionComponent with HasGameRef {
     if (colorId == 1) yOff = 75;
     else if (colorId == 2) yOff = 281;
     else if (colorId == 3) yOff = 331;
+    else if (colorId == 4) yOff = 381;
 
     return {
-      // FIX: Added proper keys for South, Left, North idles
       'standSouth': [r(4, 5 + yOff, 16, 21)],
       'standLeft':  [r(79, 5 + yOff, 17, 21)], // Used for Left & Right (flipped)
       'standNorth': [r(154, 4 + yOff, 16, 21)],

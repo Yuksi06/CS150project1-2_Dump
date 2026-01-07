@@ -26,7 +26,6 @@ class GameController {
 
       _channel!.stream.listen(
         (data) {
-          // --- FIX: Handle Merged Packets ---
           final String packet = data.toString().trim();
           final List<String> messages = packet.split('\n');
 

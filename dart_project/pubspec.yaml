@@ -38,6 +38,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   args: ^2.7.0
   google_fonts: ^6.1.0
+  flame_audio: ^2.4.0
 
 dev_dependencies:
   flutter_test:
@@ -74,8 +75,15 @@ flutter:
     - assets/images/tileSet.png
     - assets/images/powerups.png
 
-    - assets/audio/music/
-    - assets/audio/sfx/
+    - assets/audio/music/draw.wav
+    - assets/audio/music/ingame.wav
+    - assets/audio/music/losingPlayer.wav
+    - assets/audio/music/opening.wav
+    - assets/audio/music/winningPlayer.wav
+
+    - assets/audio/sfx/death.wav
+    - assets/audio/sfx/explosion.wav
+    - assets/audio/sfx/powerups.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

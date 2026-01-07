@@ -5,6 +5,7 @@ class PlayerModel {
   final int colorId;  // 0 = White, 1 = Black, 2 = Red, 3 = Green
   final bool isDead;
   final bool isReady;
+  final bool isInvincible;
 
   PlayerModel({
     required this.id,
@@ -13,6 +14,7 @@ class PlayerModel {
     required this.colorId,
     this.isDead = false,
     this.isReady = false,
+    this.isInvincible = false,
   });
 
   // Convert generic JSON Map to PlayerModel type
@@ -24,6 +26,7 @@ class PlayerModel {
       colorId: json['colorId'],
       isDead: json['isDead'] ?? false,
       isReady: json['isReady'] ?? false,
+      isInvincible: json['isInvincible'] ?? false,
     );
   }
 
@@ -35,6 +38,7 @@ class PlayerModel {
       'colorId': colorId,
       'isDead': isDead,
       'isReady': isReady,
+      'isInvincible': isInvincible,
   };
 }
 

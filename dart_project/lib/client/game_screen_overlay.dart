@@ -5,7 +5,6 @@ import 'dart:async';
 import 'game_controller.dart';
 import 'bomberman_game.dart';
 import 'lobby_screen.dart'; 
-//import '../common/protocol.dart';
 
 class GameScreenOverlay extends StatefulWidget {
   const GameScreenOverlay({super.key});
@@ -21,11 +20,13 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
   GameController? _controller;
   
   int _timeLeft = 300;
-  List<bool> _isAlive = [true, true, true, true];
+  // Sized for 5 players
+  List<bool> _isAlive = [true, true, true, true, true]; 
   int _totalPlayers = 0; 
   
   int? _previousWinnerId;
   int _myId = -1;
+  bool _isHost = false; // Capture this from args
 
   BombermanGame? _gameInstance;
 
@@ -54,7 +55,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
       final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       _controller = args['controller'] as GameController;
       _myId = _controller!.myPlayerId;
-      final isHost = args['isHost'] as bool;
+      _isHost = args['isHost'] as bool; // Capture IsHost
 
       _gameInstance = BombermanGame(
         controller: _controller!, 
@@ -65,7 +66,6 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
         if (!mounted) return;
 
         setState(() {
-          // --- FIX 3: Stop updating timer if game is over ---
           if (state.winnerId == null) {
              _timeLeft = state.timeRemaining.toInt();
           }
@@ -75,7 +75,8 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
           }
 
           for (var p in state.players) {
-            if (p.id >= 0 && p.id < 4) {
+            //  Check up to 5
+            if (p.id >= 0 && p.id < 5) {
               _isAlive[p.id] = !p.isDead; 
             }
           }
@@ -89,7 +90,6 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
                 _centerText = "DRAW!";
                 _centerTextColor = Colors.white;
               } else if (state.winnerId == _myId) {
-                // This will now work for everyone because _myId is correct!
                 _centerText = "YOU WIN!";
                 _centerTextColor = Colors.yellowAccent; 
               } else {
@@ -109,7 +109,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
               builder: (context) => LobbyScreen(
                 controller: _controller!, 
                 myPlayerId: _myId, 
-                isHost: isHost
+                isHost: _isHost,
               ),
             ),
           );
@@ -145,7 +145,8 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
 
                 const Spacer(),
 
-                for (int i = 0; i < 4; i++)
+                // Loop up to 5
+                for (int i = 0; i < 5; i++)
                   if (i < _totalPlayers) ...[
                     _buildPlayerStatus(i),
                     const SizedBox(width: 15),
@@ -230,6 +231,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
       case 1: return Colors.black; 
       case 2: return Colors.red;
       case 3: return Colors.blue;
+      case 4: return Colors.green;
       default: return Colors.grey;
     }
   }

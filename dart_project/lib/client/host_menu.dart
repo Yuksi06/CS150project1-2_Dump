@@ -5,6 +5,7 @@ import 'dart:isolate';
 import '../../server/isolate_server.dart';
 import 'game_controller.dart';
 import 'lobby_screen.dart';
+import 'audio_manager.dart';
 
 class HostMenu extends StatefulWidget {
   const HostMenu({super.key});
@@ -14,6 +15,13 @@ class HostMenu extends StatefulWidget {
 }
 
 class _HostMenuState extends State<HostMenu> {
+
+  @override
+  void initState() {
+    super.initState();
+    AudioManager().playBgm('opening');
+  }
+
   int _selectedIndex = 0;
   bool _isEditing = false;
   
@@ -27,7 +35,6 @@ class _HostMenuState extends State<HostMenu> {
   final TextEditingController _playersController = TextEditingController(text: "4");
   final TextEditingController _durationController = TextEditingController(text: "300");
 
-  // Focus Nodes
   final FocusNode _mainNode = FocusNode(); 
   final FocusNode _portNode = FocusNode();
   final FocusNode _playersNode = FocusNode();
@@ -90,7 +97,6 @@ class _HostMenuState extends State<HostMenu> {
     _mainNode.requestFocus();
   }
 
-  // --- FIX: Validation Helper ---
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -106,7 +112,6 @@ class _HostMenuState extends State<HostMenu> {
     final players = int.tryParse(_playersController.text);
     final duration = int.tryParse(_durationController.text);
 
-    // --- FIX: Validation Logic ---
     if (port == null || players == null || duration == null) {
       _showError("INVALID INPUT FORMAT");
       return;
@@ -117,8 +122,8 @@ class _HostMenuState extends State<HostMenu> {
       return;
     }
 
-    if (players < 2 || players > 4) {
-      _showError("PLAYERS MUST BE 2-4");
+    if (players < 2 || players > 5) {
+      _showError("PLAYERS MUST BE 2-5");
       return;
     }
 
@@ -135,7 +140,7 @@ class _HostMenuState extends State<HostMenu> {
     try {
       await Isolate.spawn(
         runServerIsolate, 
-        // We pass the validated duration here
+        // We pass the validated inputs here
         [receivePort.sendPort, port, players, duration]
       );
     } catch (e) {
@@ -169,8 +174,8 @@ class _HostMenuState extends State<HostMenu> {
         MaterialPageRoute(
           builder: (context) => LobbyScreen(
             controller: controller, 
-            myPlayerId: controller.myPlayerId, // Use correct ID from handshake
-            isHost: true
+            myPlayerId: controller.myPlayerId, 
+            isHost: true,
           ),
         ),
       );
@@ -206,7 +211,7 @@ class _HostMenuState extends State<HostMenu> {
                 _buildRetroInput("PORT (1024+)", _portController, _portNode, _idxPort),
                 const SizedBox(height: 20),
 
-                _buildRetroInput("PLAYERS (2-4)", _playersController, _playersNode, _idxPlayers),
+                _buildRetroInput("PLAYERS (2-5)", _playersController, _playersNode, _idxPlayers),
                 const SizedBox(height: 20),
 
                 _buildRetroInput("TIME (30-600s)", _durationController, _durationNode, _idxDuration),

@@ -17,7 +17,7 @@ class ClientConnection {
       return;
     }
 
-    // --- FIX: Send Handshake Immediately ---
+    // Send Handshake Immediately
     sendHandshake(assignedId);
 
     int colorId = assignedId;
@@ -28,6 +28,7 @@ class ClientConnection {
     if (assignedId == 1) { startX = 13.0; startY = 11.0; }
     if (assignedId == 2) { startX = 13.0; startY = 1.0; }
     if (assignedId == 3) { startX = 1.0;  startY = 11.0; }
+    if (assignedId == 4) { startX = 7.0;  startY = 6.0; }
 
     player = PlayerEntity(assignedId, startX * 32.0, startY * 32.0, colorId, state);
     state.addEntity(player);
@@ -61,7 +62,6 @@ class ClientConnection {
     }
   }
 
-  // --- FIX: Add Newline delimiter (\n) to prevent packet merging ---
   void sendHandshake(int id) {
     if (socket.readyState == WebSocket.open) {
       socket.add(jsonEncode({'type': 'handshake', 'id': id}) + "\n");

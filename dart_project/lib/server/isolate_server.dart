@@ -1,18 +1,23 @@
 import 'dart:isolate';
 import 'dart:io';
 import 'dart:async';
-import 'package:dart_project/server/game_loop.dart';
-import 'package:dart_project/server/game_state.dart';
-import 'package:dart_project/server/client_connection.dart';
+import 'game_loop.dart';
+import 'game_state.dart';
+import 'client_connection.dart';
 
 void runServerIsolate(List<dynamic> args) async {
   final sendPort = args[0] as SendPort;
   final int port = args[1] as int;
-  //final int playerCount = args[2] as int;
+  
+  final int playerCount = args[2] as int;
+  
   final int duration = args[3] as int;
 
-  print("[Server] Starting Game Loop with duration: $duration");
+  print("[Server] Starting Game Loop with duration: $duration, Players: $playerCount");
   final state = ServerGameState(duration: duration.toDouble());
+  
+  state.setPlayerLimit(playerCount);
+
   final gameLoop = GameLoop(state);
   gameLoop.start();
 
@@ -21,9 +26,6 @@ void runServerIsolate(List<dynamic> args) async {
   Timer.periodic(const Duration(milliseconds: 50), (timer) {
     try {
       clients.removeWhere((c) => c.socket.readyState != WebSocket.open);
-
-      // NOTE: Auto-Start Logic is REMOVED.
-      // We wait for Player 0 (Host) to send "start_game" command.
       
       final snapshot = state.getSnapshot();
       if (clients.isNotEmpty) {
@@ -44,7 +46,7 @@ void runServerIsolate(List<dynamic> args) async {
     await for (HttpRequest request in server) {
       if (WebSocketTransformer.isUpgradeRequest(request)) {
         
-        // 1. LOCK CHECK: Is game running? (Prevents Late Joiners)
+        // 1. LOCK CHECK: Is game running?
         if (!state.isLobby) {
            print("[Server] Connection Rejected: Game in Progress");
            request.response.statusCode = HttpStatus.forbidden; 
@@ -57,7 +59,7 @@ void runServerIsolate(List<dynamic> args) async {
            print("[Server] Connection Rejected: Lobby Full");
            request.response.statusCode = HttpStatus.serviceUnavailable;
            await request.response.close();
-           continue;
+           continue; 
         }
 
         // 3. Connect

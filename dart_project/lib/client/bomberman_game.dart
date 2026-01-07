@@ -7,6 +7,8 @@ import 'dart:async';
 
 import 'game_controller.dart';
 import '../common/constants.dart'; 
+import '../common/protocol.dart'; // Ensure this is imported
+import 'audio_manager.dart';
 
 import 'components/remote_player.dart';
 import 'components/game_map.dart';
@@ -25,6 +27,9 @@ class BombermanGame extends FlameGame with KeyboardEvents {
   final Map<int, BombVisual> _bombs = {};
   final Set<int> _processedExplosions = {};
   final Map<int, PowerupVisual> _powerups = {};
+  
+  bool _gameEnded = false;
+  final Set<int> _processedDeaths = {};
 
   BombermanGame({required this.controller, required this.myPlayerId}) {
     camera = CameraComponent.withFixedResolution(
@@ -38,6 +43,8 @@ class BombermanGame extends FlameGame with KeyboardEvents {
 
   @override
   Future<void> onLoad() async {
+    AudioManager().playBgm('ingame');
+
     int retries = 0;
     while (retries < 5) {
       try {
@@ -63,7 +70,7 @@ class BombermanGame extends FlameGame with KeyboardEvents {
     };
     add(_crateLayer);
   }
-
+  
   @override
   void update(double dt) {
     super.update(dt);
@@ -71,34 +78,43 @@ class BombermanGame extends FlameGame with KeyboardEvents {
     final snapshot = controller.currentSnapshot;
     if (snapshot == null) return;
 
+    if (!_gameEnded && snapshot.winnerId != null) {
+      _gameEnded = true;
+      if (snapshot.winnerId == -1) {
+        AudioManager().playDrawMusic();
+      } else if (snapshot.winnerId == myPlayerId) {
+        AudioManager().playWinMusic();
+      } else {
+        AudioManager().playLoseMusic();
+      }
+    }
+
     bool amIDead = false;
+    PlayerModel? myModel;
     try {
-      final me = snapshot.players.firstWhere((p) => p.id == myPlayerId);
-      amIDead = me.isDead;
+      myModel = snapshot.players.firstWhere((p) => p.id == myPlayerId);
+      amIDead = myModel.isDead;
     } catch (_) {}
 
+    // Death SFX
+    for (var p in snapshot.players) {
+      if (p.isDead && !_processedDeaths.contains(p.id)) {
+        _processedDeaths.add(p.id);
+        AudioManager().playDeath();
+      }
+    }
+
     for (var playerModel in snapshot.players) {
-      
-      // --- FIX: VISIBILITY LOGIC ---
       if (playerModel.isDead && playerModel.id != myPlayerId) {
         if (!amIDead) {
-          // I am alive. I should only hide them if they are fully a Ghost.
-          // If they are still playing the death animation, keep them visible.
           if (_players.containsKey(playerModel.id)) {
              final rp = _players[playerModel.id]!;
-             
-             // Must update model so it knows it is dead and plays anim
              rp.syncToModel(playerModel);
 
              if (rp.isVisiblyGhost) {
                remove(rp);
                _players.remove(playerModel.id);
              }
-          }
-          // Do not create NEW players if they are already dead ghosts
-          else {
-             // (Optional: You could allow them to spawn just to play death anim if they just died, 
-             // but 'containsKey' covers the normal case of being on screen then dying)
           }
           continue; 
         }
@@ -145,7 +161,26 @@ class BombermanGame extends FlameGame with KeyboardEvents {
       if (!_processedExplosions.contains(explosionData.id)) {
         _processedExplosions.add(explosionData.id);
         add(ExplosionVisual(explosionData)..priority = 8);
+        AudioManager().playExplosion();
       }
+    }
+
+    // Powerup SFX Logic
+    final currentIds = _powerups.keys.toSet();
+    final snapshotIds = snapshot.powerups.map((p) => p.id).toSet();
+    final removedIds = currentIds.difference(snapshotIds);
+
+    for (var id in removedIds) {
+      if (myModel != null && _powerups.containsKey(id)) {
+        final pVisual = _powerups[id]!;
+        double dx = (myModel.x) - pVisual.position.x;
+        double dy = (myModel.y) - pVisual.position.y;
+        if (dx.abs() < 20 && dy.abs() < 20) { 
+           AudioManager().playPowerup();
+        }
+      }
+      remove(_powerups[id]!);
+      _powerups.remove(id);
     }
 
     for (var pData in snapshot.powerups) {
