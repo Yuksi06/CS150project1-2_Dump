@@ -29,6 +29,12 @@ class PowerupVisual extends SpriteAnimationComponent with HasGameRef {
       case 2: // Bomb Up [(40, 0), (40, 40)]
         frames = [Vector2(40, 0), Vector2(40, 40)];
         break;
+      case 3: // Vest
+        frames = [Vector2(60, 0), Vector2(60, 40)];
+        break;
+      case 4: // Heart
+        frames = [Vector2(80, 0), Vector2(80, 40)];
+        break;
       default: // Vest [(60, 0), (60, 40)]
         frames = [Vector2(60, 0), Vector2(60, 40)];
         break;

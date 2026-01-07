@@ -7,6 +7,8 @@ class PlayerModel {
   final bool isReady;
   final bool isInvincible;
 
+  final int extraLives; // Option 5: Heart
+
   PlayerModel({
     required this.id,
     required this.x,
@@ -15,6 +17,7 @@ class PlayerModel {
     this.isDead = false,
     this.isReady = false,
     this.isInvincible = false,
+    this.extraLives = 0, // Default 0
   });
 
   // Convert generic JSON Map to PlayerModel type
@@ -27,6 +30,7 @@ class PlayerModel {
       isDead: json['isDead'] ?? false,
       isReady: json['isReady'] ?? false,
       isInvincible: json['isInvincible'] ?? false,
+      extraLives: json['lives'] ?? 0, // Receive
     );
   }
 
@@ -39,6 +43,7 @@ class PlayerModel {
       'isDead': isDead,
       'isReady': isReady,
       'isInvincible': isInvincible,
+      'lives': extraLives, // Send
   };
 }
 

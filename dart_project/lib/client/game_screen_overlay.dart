@@ -20,13 +20,14 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
   GameController? _controller;
   
   int _timeLeft = 300;
-  // Sized for 5 players
-  List<bool> _isAlive = [true, true, true, true, true]; 
-  int _totalPlayers = 0; 
   
+  List<bool> _isAlive = [true, true, true, true, true];
+  List<int> _playerLives = [0, 0, 0, 0, 0]; 
+  
+  int _totalPlayers = 0; 
   int? _previousWinnerId;
   int _myId = -1;
-  bool _isHost = false; // Capture this from args
+  bool _isHost = false; 
 
   BombermanGame? _gameInstance;
 
@@ -39,10 +40,8 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
   void _startCountdown() async {
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) setState(() => _centerText = "GET SET");
-    
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) setState(() => _centerText = "BOMB TIME!");
-    
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) setState(() => _showOverlay = false);
   }
@@ -55,7 +54,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
       final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       _controller = args['controller'] as GameController;
       _myId = _controller!.myPlayerId;
-      _isHost = args['isHost'] as bool; // Capture IsHost
+      _isHost = args['isHost'] as bool; 
 
       _gameInstance = BombermanGame(
         controller: _controller!, 
@@ -75,9 +74,10 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
           }
 
           for (var p in state.players) {
-            //  Check up to 5
             if (p.id >= 0 && p.id < 5) {
-              _isAlive[p.id] = !p.isDead; 
+              _isAlive[p.id] = !p.isDead;
+              // SYNC LIVES HERE
+              _playerLives[p.id] = p.extraLives; 
             }
           }
         });
@@ -136,20 +136,16 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
                 const SizedBox(width: 10),
                 Text(
                   _formatTime(_timeLeft),
-                  style: GoogleFonts.pressStart2p(
-                    color: Colors.white, 
-                    fontSize: 20,
-                    letterSpacing: 2.0
-                  ),
+                  style: GoogleFonts.pressStart2p(color: Colors.white, fontSize: 20, letterSpacing: 2.0),
                 ),
 
                 const Spacer(),
 
-                // Loop up to 5
                 for (int i = 0; i < 5; i++)
                   if (i < _totalPlayers) ...[
                     _buildPlayerStatus(i),
-                    const SizedBox(width: 15),
+                    // HUGE SPACING to prevent overlaps
+                    const SizedBox(width: 45), 
                   ]
               ],
             ),
@@ -200,6 +196,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
   Widget _buildPlayerStatus(int index) {
     bool alive = _isAlive[index];
     Color color = _getPlayerColor(index);
+    int lives = _playerLives[index]; 
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -209,10 +206,7 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
           height: 32,
           decoration: BoxDecoration(
             color: alive ? color : Colors.grey[800],
-            border: Border.all(
-              color: Colors.white, 
-              width: 2
-            ),
+            border: Border.all(color: Colors.white, width: 2),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Center(
@@ -221,6 +215,23 @@ class _GameScreenOverlayState extends State<GameScreenOverlay> {
               : const Text("💀", style: TextStyle(fontSize: 16)),
           ),
         ),
+        
+        // HEART ROW
+        // Using Fixed Height to prevent jumping when heart appears/disappears
+        SizedBox(
+          height: 16, 
+          child: (lives > 0 && alive)
+             ? Row(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: List.generate(lives, (index) => 
+                   const Padding(
+                     padding: EdgeInsets.symmetric(horizontal: 1),
+                     child: Icon(Icons.favorite, color: Colors.red, size: 12),
+                   )
+                 ),
+               )
+             : null,
+        )
       ],
     );
   }
